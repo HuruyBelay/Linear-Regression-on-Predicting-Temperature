@@ -1,0 +1,114 @@
+---
+title: "Linear Regression on Predicting Temperature"
+author: "Huruy Belay"
+date: "August 21, 2017"
+output: html_document
+---
+
+Climate Change
+
+There have been many studies documenting that the average global temperature has been increasing over the last century. The consequences of a continued rise in global temperature will be dire. Rising sea levels and an increased frequency of extreme weather events will affect billions of people.
+
+In this problem, we will attempt to study the relationship between average global temperature and several other factors.
+
+The file climate_change.csv contains climate data from May 1983 to December 2008. The available variables include:
+
+* **Year**: the observation year.
+* **Month**: the observation month.
+* **Temp**: the difference in degrees Celsius between the average global temperature in that period and a reference value. This data comes from the [Climatic Research Unit at the University of East Anglia](https://crudata.uea.ac.uk/cru/data/temperature/).
+* **CO2**, **N2O**, **CH4**, **CFC.11**, **CFC.12**: atmospheric concentrations of carbon dioxide (CO2), nitrous oxide (N2O), methane  (CH4), trichlorofluoromethane (CCl3F; commonly referred to as CFC-11) and dichlorodifluoromethane (CCl2F2; commonly referred to as CFC-12), respectively. This data comes from the [ESRL/NOAA Global Monitoring Division](https://www.esrl.noaa.gov/gmd/ccgg/data-products.html).
+    * CO2, N2O and CH4 are expressed in ppmv (parts per million by volume  -- i.e., 397 ppmv of CO2 means that CO2 constitutes 397 millionths of the total volume of the atmosphere)
+    * CFC.11 and CFC.12 are expressed in ppbv (parts per billion by volume). 
+* **Aerosols**: the mean stratospheric aerosol optical depth at 550 nm. This variable is linked to volcanoes, as volcanic eruptions result in new particles being added to the atmosphere, which affect how much of the sun's energy is reflected back into space. This data is from the [Godard Institute for Space Studies at NASA](https://data.giss.nasa.gov/modelforce/strataer/).
+* **TSI**: the total solar irradiance (TSI) in W/m2 (the rate at which the sun's energy is deposited per unit area). Due to sunspots and other solar phenomena, the amount of energy that is given off by the sun varies substantially with time. This data is from the [SOLARIS-HEPPA project website](http://solarisheppa.geomar.de/solarisheppa/cmip5).
+* **MEI**: multivariate El Nino Southern Oscillation index (MEI), a measure of the strength of the [El Nino/La Nina-Southern Oscillation](http://solarisheppa.geomar.de/solarisheppa/cmip5) (a weather effect in the Pacific Ocean that affects global temperatures). This data comes from the [ESRL/NOAA Physical Sciences Division[(https://www.esrl.noaa.gov/psd/enso/mei/table.html).
+
+
+#### Reading the dataset
+
+```{r}
+climatechange <- read.csv("climate_change.csv")
+```
+
+* *It should be better if we understand the behaviour of the data set*.
+
+```{r results='hide'}
+names(climatechange)
+str(climatechange)
+summary(climatechange)
+table(climatechange$Month)
+```
+
+#### Splitting the data into training and testing data
+
+I am splitting the data into a training set, consisting of all the observations up to and including 2006, and a testing set consisting of the remaining years.
+
+```{r}
+climate_train <- subset(climatechange, Year<=2006)
+climate_test <- subset(climatechange, Year>2006)
+```
+
+#### Modeling Tempreture
+
+We will not use **Year** and **Month** variables in the model building:
+
+```{r}
+Temp_Model1 <- lm(Temp ~ MEI + CO2 + CH4 + N2O + CFC.11 + CFC.12 + TSI + Aerosols, data = climate_train)
+summary(Temp_Model1)
+```
+
+* And Computing **SSE** and **RMSE** for the above model
+
+```{r}
+SSE_1 = sum(Temp_Model1$residuals^2)
+RMSE_1 = sqrt(SSE_1/nrow(climate_train))
+
+SSE_1
+RMSE_1
+```
+
+* Except **CH4** and **N2O**, all other the variables are statistically significant. Lets remove the **CH4** and **N2O** variables and build model again.
+
+```{r}
+Temp_Model2 <- lm(Temp ~ MEI + CO2+ CFC.11 + CFC.12 + TSI + Aerosols, data = climate_train)
+summary(Temp_Model2)
+```
+
+* And again we will calculate the SSE and RMSE for the second (TempModel2) model
+
+```{r}
+SSE_2 = sum(Temp_Model2$residuals^2)
+RMSE_2 = sqrt(SSE_2/nrow(climate_train))
+
+SSE_2
+RMSE_2
+```
+
+In the **second model** (TempModel2) all the predictors variables are siginificant. There is an increase in **R squared**. In addition, the **SSE** and **RMSE** increases in the **second model**.
+
+Therefore, the **first model**(TempModel1) is the best model.
+
+#### Predict on the test dataset
+
+```{r}
+Temp_Predict <- predict(Temp_Model1, newdata = climate_test)
+```
+
+Now we can compute the out of sample R-squared.
+
+```{r}
+SSE = sum((Temp_Predict - climate_test$Temp)^2)
+SST = sum((mean(climate_train$Temp) - climate_test$Temp)^2)
+Rsquare = 1 - SSE/SST
+Rsquare
+```
+
+Now can compute the RSME:
+
+```{r}
+RMSE = sqrt(SSE/nrow(climate_test))
+RMSE
+```
+
+
+
